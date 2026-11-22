@@ -136,16 +136,16 @@ export const UserDashboardView: React.FC<UserDashboardViewProps> = ({ initialTab
             <button
               type="button"
               onClick={() => openAuthModal('login')}
-              className="h-10 px-5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
+              className="h-10 px-5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900"
             >
-              Sign In
+              Login
             </button>
             <button
               type="button"
               onClick={() => openAuthModal('register')}
-              className="h-10 px-5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-sm font-medium text-zinc-800 dark:text-zinc-200"
+              className="h-10 px-5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
             >
-              Create Account
+              Sign Up
             </button>
           </div>
         </div>
@@ -216,9 +216,7 @@ export const UserDashboardView: React.FC<UserDashboardViewProps> = ({ initialTab
         <div className="flex items-center gap-4">
           <UserAvatar gender={user.gender} name={user.name} size="lg" />
           <div>
-            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-              Account Workspace · {user.gender === 'female' ? 'Female' : 'Male'} 3D Anime Avatar
-            </p>
+            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Account Workspace</p>
             <h1 className="font-display text-3xl font-bold text-zinc-900 dark:text-white mt-0.5">
               Welcome, {user.name}
             </h1>
@@ -788,21 +786,20 @@ export const UserDashboardView: React.FC<UserDashboardViewProps> = ({ initialTab
               <div>
                 <h2 className="font-display text-xl font-semibold text-zinc-900 dark:text-white">Profile Settings</h2>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-                  Manage your personal information, gender 3D anime avatar, invoicing details, and notification
-                  preferences.
+                  Manage your personal information, profile avatar, invoicing details, and notification preferences.
                 </p>
               </div>
 
-              {/* Gender & 3D Anime Avatar Selector */}
+              {/* Gender & Profile Avatar Selector */}
               <div className="p-4 sm:p-5 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 space-y-4">
                 <div className="flex items-center gap-4">
                   <UserAvatar gender={gender} name={name || user.name} size="xl" />
                   <div>
                     <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-                      3D Anime Profile Avatar ({gender === 'female' ? 'Female' : 'Male'})
+                      Profile Avatar ({gender === 'female' ? 'Female' : 'Male'})
                     </p>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                      Choose your gender below to automatically set the matching 3D anime avatar across your profile.
+                      Choose your gender below to update your profile avatar.
                     </p>
                   </div>
                 </div>
@@ -824,16 +821,13 @@ export const UserDashboardView: React.FC<UserDashboardViewProps> = ({ initialTab
                       >
                         <img
                           src={item.src}
-                          alt={`${item.label} 3D Anime Avatar`}
+                          alt={item.label}
                           className="w-12 h-12 rounded-full object-cover border border-zinc-200 dark:border-zinc-700 shrink-0"
                         />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                            {item.label}
-                            {selected && <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
-                          </p>
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400">{item.subtitle}</p>
-                        </div>
+                        <span className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                          {item.label}
+                          {selected && <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                        </span>
                       </button>
                     );
                   })}

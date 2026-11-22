@@ -415,7 +415,7 @@ app.post('/api/auth/otp/verify', (req: Request, res: Response) => {
       }
     | undefined;
 
-  if (!challenge || challenge.consumed) {
+  if (!challenge || challenge.consumed || challenge.mode === 'reset') {
     res.status(400).json({ error: 'This OTP session has expired or was already used. Please request a new OTP.' });
     return;
   }
@@ -492,6 +492,158 @@ app.post('/api/auth/otp/verify', (req: Request, res: Response) => {
   const user = getUserById(id)!;
   const token = createSessionToken(user.id, user.role);
   res.status(201).json({ token, user, isNewUser: true });
+});
+
+app.post('/api/auth/forgot-password/request', (req: Request, res: Response) => {
+  const rawChannel = typeof req.body?.channel === 'string' ? req.body.channel.trim().toLowerCase() : 'gmail';
+  if (rawChannel !== 'whatsapp' && rawChannel !== 'gmail' && rawChannel !== 'mobile') {
+    res.status(400).json({ error: 'Choose Email/Gmail, WhatsApp, or Mobile to receive your reset OTP.' });
+    return;
+  }
+  const channel = rawChannel as 'whatsapp' | 'gmail' | 'mobile';
+  const rawIdentifier = typeof req.body?.identifier === 'string' ? req.body.identifier.trim().slice(0, 120) : '';
+
+  let canonicalIdentifier = '';
+  if (channel === 'gmail') {
+    canonicalIdentifier = rawIdentifier.toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(canonicalIdentifier)) {
+      res.status(400).json({ error: 'Please enter a valid registered email address.' });
+      return;
+    }
+  } else {
+    const digits = normalizePhoneDigits(rawIdentifier);
+    if (digits.length < 10 || digits.length > 15) {
+      res.status(400).json({ error: 'Please enter a valid 10-digit registered number.' });
+      return;
+    }
+    canonicalIdentifier = formatCanonicalPhone(digits);
+  }
+
+  const existing = findUserByOtpIdentifier(channel, canonicalIdentifier);
+  if (!existing) {
+    res.status(404).json({ error: 'No account found with those details. Please check or create a new account.' });
+    return;
+  }
+  if (existing.role === 'admin') {
+    res.status(403).json({ error: 'Administrator passwords cannot be reset here.' });
+    return;
+  }
+
+  const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const recentCount = (
+    db
+      .prepare('SELECT COUNT(*) as c FROM otp_challenges WHERE identifier = ? AND created_at >= ?')
+      .get(canonicalIdentifier, tenMinAgo) as { c: number }
+  ).c;
+  if (recentCount >= 5) {
+    res.status(429).json({ error: 'Too many reset requests. Please wait a few minutes before retrying.' });
+    return;
+  }
+
+  const latestChallenge = db
+    .prepare('SELECT created_at FROM otp_challenges WHERE identifier = ? ORDER BY created_at DESC LIMIT 1')
+    .get(canonicalIdentifier) as { created_at: string } | undefined;
+  if (latestChallenge && Date.now() - new Date(latestChallenge.created_at).getTime() < 15_000) {
+    res.status(429).json({ error: 'Please wait 15 seconds before requesting another reset OTP.' });
+    return;
+  }
+
+  db.prepare("UPDATE otp_challenges SET consumed = 1 WHERE identifier = ? AND mode = 'reset' AND consumed = 0").run(
+    canonicalIdentifier
+  );
+
+  const challengeId = `rst-${crypto.randomUUID()}`;
+  const otpCode = crypto.randomInt(100000, 1000000).toString();
+  const codeHash = hashOtpCode(challengeId, otpCode);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
+
+  db.prepare(
+    `INSERT INTO otp_challenges (
+      id, channel, identifier, code_hash, mode, pending_name, pending_gender, attempts, consumed, expires_at, created_at
+    ) VALUES (?, ?, ?, ?, 'reset', '', 'male', 0, 0, ?, ?)`
+  ).run(challengeId, channel, canonicalIdentifier, codeHash, expiresAt.toISOString(), now.toISOString());
+
+  res.status(201).json({
+    challengeId,
+    channel,
+    maskedIdentifier: maskIdentifier(channel, canonicalIdentifier),
+    expiresInSeconds: 300,
+    deliveryMode: 'instant_preview',
+    previewOtp: otpCode
+  });
+});
+
+app.post('/api/auth/forgot-password/reset', (req: Request, res: Response) => {
+  const challengeId = typeof req.body?.challengeId === 'string' ? req.body.challengeId.trim() : '';
+  const otp = typeof req.body?.otp === 'string' ? req.body.otp.replace(/\D/g, '') : '';
+  const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+
+  if (!challengeId || !/^\d{6}$/.test(otp)) {
+    res.status(400).json({ error: 'Please enter a valid 6-digit reset OTP.' });
+    return;
+  }
+  if (newPassword.length < 6) {
+    res.status(400).json({ error: 'New password must be at least 6 characters long.' });
+    return;
+  }
+
+  const challenge = db.prepare('SELECT * FROM otp_challenges WHERE id = ?').get(challengeId) as
+    | {
+        id: string;
+        channel: 'whatsapp' | 'gmail' | 'mobile';
+        identifier: string;
+        code_hash: string;
+        mode: string;
+        attempts: number;
+        consumed: number;
+        expires_at: string;
+      }
+    | undefined;
+
+  if (!challenge || challenge.consumed || challenge.mode !== 'reset') {
+    res.status(400).json({ error: 'This reset session has expired or was already used. Please request a new OTP.' });
+    return;
+  }
+  if (new Date(challenge.expires_at).getTime() < Date.now()) {
+    db.prepare('UPDATE otp_challenges SET consumed = 1 WHERE id = ?').run(challenge.id);
+    res.status(400).json({ error: 'This reset OTP has expired. Please request a fresh code.' });
+    return;
+  }
+  if (challenge.attempts >= 5) {
+    db.prepare('UPDATE otp_challenges SET consumed = 1 WHERE id = ?').run(challenge.id);
+    res.status(429).json({ error: 'Too many incorrect OTP attempts. Please request a new code.' });
+    return;
+  }
+
+  if (!verifyOtpCode(challenge.id, otp, challenge.code_hash)) {
+    const nextAttempts = challenge.attempts + 1;
+    db.prepare('UPDATE otp_challenges SET attempts = ? WHERE id = ?').run(nextAttempts, challenge.id);
+    const remaining = Math.max(0, 5 - nextAttempts);
+    res.status(401).json({
+      error:
+        remaining > 0
+          ? `Incorrect 6-digit OTP. ${remaining} ${remaining === 1 ? 'attempt' : 'attempts'} remaining.`
+          : 'Too many incorrect attempts. Please request a new reset OTP.'
+    });
+    return;
+  }
+
+  db.prepare('UPDATE otp_challenges SET consumed = 1 WHERE id = ?').run(challenge.id);
+
+  const existing = findUserByOtpIdentifier(challenge.channel, challenge.identifier);
+  if (!existing || existing.role === 'admin') {
+    res.status(404).json({ error: 'Account could not be updated.' });
+    return;
+  }
+
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(newPassword), existing.id);
+  const updatedUser = getUserById(existing.id);
+
+  res.json({
+    ok: true,
+    email: updatedUser?.email || ''
+  });
 });
 
 app.post('/api/auth/login', (req: Request, res: Response) => {
@@ -1571,7 +1723,7 @@ app.get('/api/admin/customers', requireAdmin, (_req: AuthedRequest, res: Respons
 // ============================================================================
 
 async function startServer() {
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
   const distDir = path.resolve(process.cwd(), 'dist');
   const isProd = process.env.NODE_ENV === 'production' && fs.existsSync(distDir);
 

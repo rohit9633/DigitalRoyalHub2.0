@@ -488,13 +488,22 @@ export const Navbar: React.FC = () => {
               )}
             </div>
           ) : (
-            <button
-              type="button"
-              onClick={() => openAuthModal('login')}
-              className="h-10 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors whitespace-nowrap shrink-0"
-            >
-              Sign In
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => openAuthModal('login')}
+                className="h-10 px-3.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-xs font-semibold transition-colors whitespace-nowrap shrink-0"
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                onClick={() => openAuthModal('register')}
+                className="hidden sm:inline-flex items-center justify-center h-10 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors whitespace-nowrap shrink-0"
+              >
+                Sign Up
+              </button>
+            </div>
           )}
 
           {/* Mobile Drawer Trigger */}
@@ -591,6 +600,24 @@ export const Navbar: React.FC = () => {
               {item.label}
             </button>
           ))}
+          {!user && (
+            <div className="pt-3 mt-2 border-t border-zinc-200 dark:border-zinc-800 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleNav(() => openAuthModal('login'))}
+                className="h-10 rounded-lg border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-800 dark:text-zinc-200"
+              >
+                Login
+              </button>
+              <button
+                type="button"
+                onClick={() => handleNav(() => openAuthModal('register'))}
+                className="h-10 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold"
+              >
+                Sign Up
+              </button>
+            </div>
+          )}
         </div>
       )}
     </header>

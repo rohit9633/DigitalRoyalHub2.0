@@ -82,6 +82,12 @@ interface AppContextValue {
     name?: string;
     gender?: UserGender;
   }) => Promise<UserProfile>;
+  requestPasswordReset: (payload: { channel: OtpChannel; identifier: string }) => Promise<OtpRequestResult>;
+  confirmPasswordReset: (payload: {
+    challengeId: string;
+    otp: string;
+    newPassword: string;
+  }) => Promise<{ ok: boolean; email: string }>;
   claimAdmin: (payload: { name: string; email: string; password: string }) => Promise<UserProfile>;
   logout: () => void;
   updateProfile: (payload: Record<string, unknown>) => Promise<UserProfile>;
@@ -505,7 +511,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setUser(data.user);
       setAuthModalOpen(false);
       await refreshCatalog();
-      pushToast(`Account created`, `Signed in as ${data.user.name} with 3D anime avatar`, 'success');
+      pushToast(`Account created`, `Signed in as ${data.user.name}`, 'success');
       return data.user;
     },
     [refreshCatalog, pushToast]
@@ -543,12 +549,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await refreshCatalog();
       pushToast(
         data.isNewUser ? 'Account verified & created' : `Welcome back, ${data.user.name}`,
-        `${data.user.gender === 'female' ? 'Female' : 'Male'} 3D anime avatar active on your profile`,
+        data.isNewUser ? 'Your profile is ready.' : undefined,
         'success'
       );
       return data.user;
     },
     [refreshCatalog, pushToast]
+  );
+
+  const requestPasswordReset = useCallback(
+    async (payload: { channel: OtpChannel; identifier: string }) => {
+      const data = await apiRequest<OtpRequestResult>('/api/auth/forgot-password/request', {
+        method: 'POST',
+        body: payload
+      });
+      const channelLabel =
+        payload.channel === 'whatsapp' ? 'WhatsApp' : payload.channel === 'gmail' ? 'Email' : 'Mobile';
+      pushToast('Reset OTP sent', `6-digit code sent via ${channelLabel} (${data.maskedIdentifier})`, 'success');
+      return data;
+    },
+    [pushToast]
+  );
+
+  const confirmPasswordReset = useCallback(
+    async (payload: { challengeId: string; otp: string; newPassword: string }) => {
+      const data = await apiRequest<{ ok: boolean; email: string }>('/api/auth/forgot-password/reset', {
+        method: 'POST',
+        body: payload
+      });
+      pushToast('Password updated', 'You can now log in with your new password.', 'success');
+      return data;
+    },
+    [pushToast]
   );
 
   const claimAdmin = useCallback(
@@ -680,6 +712,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     register,
     requestOtp,
     verifyOtp,
+    requestPasswordReset,
+    confirmPasswordReset,
     claimAdmin,
     logout,
     updateProfile,

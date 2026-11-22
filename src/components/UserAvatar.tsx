@@ -3,16 +3,14 @@ import maleAvatarImg from '../assets/images/avatar_male_3d_anime_1795279037587.j
 import femaleAvatarImg from '../assets/images/avatar_female_3d_anime_1795279041191.jpg';
 import type { UserGender } from '../types';
 
-export const ANIME_AVATARS: Record<UserGender, { src: string; label: string; subtitle: string }> = {
+export const ANIME_AVATARS: Record<UserGender, { src: string; label: string }> = {
   male: {
     src: maleAvatarImg,
-    label: 'Male',
-    subtitle: '3D Anime Avatar'
+    label: 'Male'
   },
   female: {
     src: femaleAvatarImg,
-    label: 'Female',
-    subtitle: '3D Anime Avatar'
+    label: 'Female'
   }
 };
 
@@ -45,7 +43,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
   return (
     <img
       src={src}
-      alt={`${name} (${gender === 'female' ? 'Female' : 'Male'} 3D Anime Avatar)`}
+      alt={`${name} profile avatar`}
       className={`${SIZE_CLASSES[size]} rounded-full object-cover border border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 shrink-0 ${className}`}
     />
   );

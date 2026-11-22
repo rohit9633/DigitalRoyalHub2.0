@@ -170,16 +170,16 @@ export const HomeView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => openAuthModal('login')}
-                      className="h-9 px-3.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900 whitespace-nowrap"
+                      className="h-9 px-4 rounded-lg border border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900 whitespace-nowrap"
                     >
-                      Sign In
+                      Login
                     </button>
                     <button
                       type="button"
                       onClick={() => openAuthModal('register')}
-                      className="h-9 px-3.5 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 whitespace-nowrap"
+                      className="h-9 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors whitespace-nowrap"
                     >
-                      Create Account
+                      Sign Up
                     </button>
                   </div>
                 </>
