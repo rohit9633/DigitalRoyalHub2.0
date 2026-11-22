@@ -1,0 +1,6 @@
+{
+  "name": "KalaVault — Digital Products Studio & Store",
+  "description": "Curated digital products marketplace with a complete Admin CMS, Razorpay checkout, real-time order tracking, push notifications, and customer library dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
